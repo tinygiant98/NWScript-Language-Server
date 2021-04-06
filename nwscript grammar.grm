@@ -1,0 +1,272 @@
+"Name"     = NWScript
+"Author"   = NelaK
+"Version"  = 1
+"About"    = Grammar to parse NWScript
+
+"Start Symbol" = <Program>
+        
+"Case Sensitive" = 'True'
+
+! -------------------------------------------------
+! Character Sets
+! -------------------------------------------------
+
+{ID Head}      = {Letter} + [_]
+{ID Tail}      = {Alphanumeric} + [_]
+{String Chars} = {Printable} + {HT} - ["\]
+{NumberNoZero} = {Number} - [0]
+
+! -------------------------------------------------
+! Terminals
+! -------------------------------------------------
+
+Identifier    = {ID Head}{ID Tail}*
+              | {ID Head}{ID Tail}* '.' {ID Head}{ID Tail}*
+!XMLText = '>' ( {String Chars} | '\' {Printable} )+ '</'
+StringLiteral = '"' ( {String Chars} | '\' {Printable} )* '"'
+Integer = {Number}+
+FloatNumber = {Number}* '.' {Number}*
+            | {Number}* '.' {Number}* 'f'
+Boolean = 'TRUE' | 'FALSE' | 'true' | 'false'      
+
+Comment Start = '/*'
+Comment End = '*/'
+Comment Line = '//'
+
+! -------------------------------------------------
+! Rules
+! -------------------------------------------------
+
+! The grammar starts below
+
+<Documentation_Statement> ::= '///' <Open_Tag> StringLiteral <Close_Tag>
+                           |  '///'
+                        
+<Open_Tag> ::= '<' Identifier Identifier '=' StringLiteral '>'
+
+<Close_Tag> ::= '</' Identifier '>'
+
+<Include_Declaration> ::= '#include' StringLiteral
+                                 
+<Constant_Declaration> ::= 'const' <Variable_Declaration> ';'
+                        
+<Formal_Parameter> ::= <Type> Identifier
+                    |  <Type> Identifier '=' <Negate Exp>
+                        
+<Function_Declaration> ::= <Type> Identifier '(' <Formal_Parameter_List> ')' <Code_Block>
+                        |  <Type> Identifier '(' ')' <Code_Block>
+                        
+<Formal_Parameter_List> ::= <Formal_Parameter>
+                         |  <Formal_Parameter> ',' <Formal_Parameter_List>
+ 
+<Code_Block> ::= '{' <Statement_List> '}'
+              |  '{' '}'
+              
+<Statement_List> ::= <Statement>
+                  |  <Statement> <Statement_List>
+              
+<Statement> ::= <Variable_Declaration> ';'
+             |  <Function_Call> ';'
+             |  <Assignment> ';'
+             |  <IfThenStatement>
+             |  <WhileStatement>
+             |  <DoWhileStatement>
+             |  <ForStatement>
+             |  <SwitchStatement>
+             |  <BreakStatement> ';'
+             |  <ReturnStatement> ';'
+             |  <ContinueStatement> ';'
+             |  <ShorthandIfStatement>
+             |  Identifier ';' ! Being stupid
+             |  ';'
+             |  <Code_Block> ! Handling a stupid edge case where code blocks are put with no conditionals or any reason
+
+<ContinueStatement> ::= 'continue'
+
+<BreakStatement> ::= 'break'
+
+<ReturnStatement> ::= 'return' <ReturnArgument>
+                   
+<ReturnArgument> ::= <Expression>
+                  |
+             
+<SimpleStatement> ::= <Variable_Declaration> ';'
+                   |  <Function_Call> ';'
+                   |  <Assignment> ';'
+                   |  <BreakStatement> ';'
+                   |  <ReturnStatement> ';'
+                   |  <ContinueStatement> ';'
+                   |  Identifier ';' ! being stupid
+                   |  ';' ! being stupid
+                   |  <Code_Block>
+                   |  <IfThenStatement>
+
+<ShorthandIfStatement> ::= Identifier '=' <ShorthandIfBlock>
+                        |  <ShorthandIfBlock>
+                   
+<ShorthandIfBlock> ::= Identifier '?' <Expression> ':' <Expression>
+                    |  <Function_Call> '?' <Expression> ':' <Expression>
+             
+<IfThenStatement> ::= <IfStatement> <ElseIfStatement> <ElseStatement>
+                 
+<IfStatement> ::= 'if' '(' <Expression> ')' <SimpleStatement>
+                
+<ElseIfStatement> ::= 'else if' '(' <Expression> ')' <SimpleStatement> <ElseIfStatement>
+                    |
+                    
+<ElseStatement> ::= 'else' <SimpleStatement>
+                 |
+                  
+<WhileStatement> ::= 'while' '(' <Expression> ')' <SimpleStatement>
+                  
+
+<DoWhileStatement> ::= 'do' <SimpleStatement> 'while' '(' <Expression> ')'
+                    
+<ForStatement> ::= 'for' '(' <ForInit> ';' <ForCondition> ';' <ForUpdate> ')' <ForInstruction>
+                
+<ForInstruction> ::= <SimpleStatement>
+                  
+<ForInit> ::= <ForExpressions>
+           |
+           
+<ForCondition> ::= <Expression>
+                |
+                
+<ForUpdate> ::= <ForExpressions>
+             |
+
+<ForExpressions> ::= <Variable_Declaration>
+                  |  <Function_Call>
+                  |  <Assignment>
+                                  
+<SwitchStatement> 
+        ::= 'switch' '(' <Expression> ')' <SwitchBlock>
+
+<SwitchBlock> 
+        ::= '{' <SwitchBlockStatementGroups> <DefaultBlock> '}'
+         |  '{' <SwitchBlockStatementGroups> '}'
+         |  '{' '}'
+
+<SwitchBlockStatementGroups>
+        ::= <SwitchBlockStatementGroup>
+         |  <SwitchBlockStatementGroups> <SwitchBlockStatementGroup>
+
+<SwitchBlockStatementGroup> 
+        ::= <SwitchLabel> <Statement_List>
+         |  <SwitchLabel>
+
+<SwitchLabel> 
+        ::= 'case' Integer ':'
+         
+<DefaultBlock> ::= 'default' ':' <Statement_List>
+            
+<Assignment> ::= Identifier '=' <Expression>
+              |  Identifier '==' <Expression> !plz no. This should be an expression only
+              |  Identifier '+=' <Expression>
+              |  Identifier '-=' <Expression>
+              |  Identifier '*=' <Expression>
+              |  Identifier '/=' <Expression>
+              |  Identifier '++'
+              |  Identifier '--'
+             
+<Variable_Declaration> ::= <Type> Identifier <Identifier_List>
+                        |  <Type> <Assignment> <Identifier_List>
+
+
+<Identifier_List> ::= ',' Identifier <Identifier_List>
+                   |  ',' <Assignment> <Identifier_List>
+                   |
+             
+<Function_Call> ::= Identifier '(' <Parameter_List> ')'
+                 | Identifier '(' ')'
+                 
+<Parameter_List> ::= <Expression>
+                  |  <Parameter_List> ',' <Expression>
+             
+
+<Interface_Declaration> ::= <Type> Identifier '(' <Formal_Parameter_List> ')' ';'
+                         |  <Type> Identifier '(' ')' ';'
+
+<Top_Level_Statement> ::= <Include_Declaration>
+                       |  <Constant_Declaration>
+                       |  <Variable_Declaration> ';'
+                       |  <Function_Declaration>
+                       |  <Interface_Declaration>
+                       |  <Define_Declaration>
+                       |  <Bool_Definition>
+                       |  <Documentation_Statement>
+                       
+<Program> ::= <Top_Level_Statement> 
+           |  <Program> <Top_Level_Statement>
+           
+<StructVariable> ::= Identifier '.' Identifier
+                  
+<Vector> ::= '[' FloatNumber ',' FloatNumber ',' FloatNumber ']'
+
+<Expression>  ::= <Expression> '>'  <Add Exp> 
+               |  <Expression> '<'  <Add Exp> 
+               |  <Expression> '<=' <Add Exp> 
+               |  <Expression> '>=' <Add Exp>
+               |  <Expression> '==' <Add Exp>    !Equal
+               |  <Expression> '!=' <Add Exp>    !Not equal
+               |  <Expression> '&'  <Add Exp>    !Bitwise AND
+               |  <Expression> '&&' <Add Exp>
+               |  <Expression> '|'  <Add Exp>    !Bitwise OR
+               |  <Expression> '||' <Add Exp>
+               |  <Expression> '~'  <Add Exp>
+               |  <Expression> '^'  <Add Exp>
+               |  <Expression> '<<'  <Add Exp>
+               |  <Expression> '>>'  <Add Exp>
+               |  <Expression> '>>>'  <Add Exp>
+               |  <Expression> '%'  <Add Exp>
+               |  <Add Exp> 
+
+<Add Exp>     ::= <Add Exp> '+' <Mult Exp>
+               |  <Add Exp> '-' <Mult Exp>
+               |  <Mult Exp> 
+
+<Mult Exp>    ::= <Mult Exp> '*' <Negate Exp> 
+               |  <Mult Exp> '/' <Negate Exp> 
+               |  <Negate Exp> 
+
+<Negate Exp>  ::= '-' <Value>
+               |  '!' <Value>
+               |  <Value> 
+               
+
+!Compiler Declares
+<Define_Declaration> ::= '#define' Identifier Integer
+                      |  '#define' Identifier <Type>
+                      
+<Bool_Definition> ::= <Type> Boolean '=' Integer ';'
+
+!Add more values to the rule below - as needed
+
+<Value>       ::= Identifier
+               |  '(' <Expression> ')'
+               |  <Function_Call>
+               |  StringLiteral
+               |  Integer
+               |  FloatNumber
+               |  Boolean
+               |  <StructVariable>
+               |  <Vector>
+               |  'OBJECT_SELF'
+               |  'OBJECT_INVALID'
+               
+<Type> ::= 'void'
+        |  'int'
+        |  'string'
+        |  'float'
+        |  'object'
+        |  'location'
+        |  'struct'
+        |  'effect'
+        |  'vector'
+        |  'talent'
+        |  'array'
+        |  'dictionary'
+        |  'event'
+        |  'itemproperty'
+        |  'action'
+        |  'dbresult'
